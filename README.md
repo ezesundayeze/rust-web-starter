@@ -1,1 +1,6 @@
-# rust-actix-web
+# Web Application with Actix and MongoDB
+
+## Features
+
+- [x] CRUD 
+- [ ] Authentication
