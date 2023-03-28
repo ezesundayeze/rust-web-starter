@@ -9,7 +9,7 @@ use crate::api::services::user;
 use crate::api::database_connection::create_client;
 
 
-async fn db_client(collection: &str) -> Collection<user::UserData> {
+pub async fn db_client(collection: &str) -> Collection<user::UserData> {
     let client: Collection<user::UserData> = create_client(collection).await;
     client
 }

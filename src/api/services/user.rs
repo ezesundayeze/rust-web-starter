@@ -7,7 +7,6 @@ use mongodb::{
 };
 use serde::{Deserialize, Serialize};
 
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct UserData {
     #[serde(rename = "_id")]
@@ -26,7 +25,6 @@ pub struct UserRequestBody {
 pub struct UserRequestBodyUpdate {
     pub name: String,
 }
-
 
 pub async fn add(
     collection: &Collection<UserData>,
@@ -57,6 +55,16 @@ pub async fn update(
 
 pub async fn find_all(collection: &Collection<UserData>) -> MongoResult<Vec<UserData>> {
     let filter = doc! {};
+    let mut cursor = collection.find(filter, None).await?;
+    let mut docs = Vec::new();
+    while let Some(doc) = cursor.next().await {
+        docs.push(doc?);
+    }
+    Ok(docs)
+}
+
+pub async fn find_by_id(collection: &Collection<UserData>, id: &str) -> MongoResult<Vec<UserData>> {
+    let filter = doc! { id: id};
     let mut cursor = collection.find(filter, None).await?;
     let mut docs = Vec::new();
     while let Some(doc) = cursor.next().await {

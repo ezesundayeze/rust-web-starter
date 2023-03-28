@@ -1,9 +1,10 @@
 use actix_web::{App, HttpServer};
 mod api;
 
-
-#[actix_web::main] // or #[tokio::main]
+#[actix_web::main]
 async fn main() -> std::io::Result<()> {
+
+    
     HttpServer::new(|| {
         App::new()
             .service(api::controllers::user::create_user)
