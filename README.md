@@ -1,23 +1,37 @@
 # Rust Web Starter Application with Rocket and MongoDB
 
+This project provides a starter application for building web projects with Rust. It includes the Rocket web framework and MongoDB database integration, as well as several commonly-used libraries and configurations to get you up and running quickly.
+
+With this starter application, you can focus on building the core features of your project, without worrying about setting up the basic infrastructure from scratch.
+
 ## Features
 
 - [x] CRUD 
+
+The application provides basic CRUD (Create, Read, Update, and Delete) operations for managing user data. Specifically, it includes the following functionality:
+
     - [x] Update user
-    - [x] Create User
+    - [x] Create user
     - [x] Delete user
     - [x] List users
 
-- [x] Authentication
+### Authentication
+
+The application includes a user authentication system that allows users to create an account, log in, and log out. Specifically, it includes the following functionality:
+
     - [x] login
     - [x] Sign up
     - [x] JWT token encode/decode
     - [x] Middleware
 
-- [ ] Email
-    - [ ] Send emails with templates
+### Email (Coming soon)
 
-- [ ] Robust Error handling
+The application includes functionality for sending emails with templates, although this feature is currently under development.
+
+### Robust Error handling (Coming soon)
+
+The application includes robust error handling to ensure that any errors that occur are handled in a graceful manner. This helps to prevent unexpected errors from causing the application to crash or malfunction.
+
 
 
 
