@@ -8,7 +8,7 @@ With this starter application, you can focus on building the core features of yo
 
 ### CRUD 
 
-The application provides basic CRUD (Create, Read, Update, and Delete) operations for managing user data. Specifically, it includes the following functionality:
+It provides basic CRUD (Create, Read, Update, and Delete) operations for managing user data. Specifically, it includes the following functionality:
 
 - [x] Update user
 - [x] Create user
@@ -17,7 +17,7 @@ The application provides basic CRUD (Create, Read, Update, and Delete) operation
 
 ### Authentication
 
-The application includes a user authentication system that allows users to create an account, log in, and log out. Specifically, it includes the following functionality:
+It includes a user authentication system that allows users to create an account, log in, and log out. Specifically, it includes the following functionality:
 
 - [x] login
 - [x] Sign up
