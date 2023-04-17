@@ -10,19 +10,19 @@ With this starter application, you can focus on building the core features of yo
 
 The application provides basic CRUD (Create, Read, Update, and Delete) operations for managing user data. Specifically, it includes the following functionality:
 
-    - [x] Update user
-    - [x] Create user
-    - [x] Delete user
-    - [x] List users
+- [x] Update user
+- [x] Create user
+- [x] Delete user
+- [x] List users
 
 ### Authentication
 
 The application includes a user authentication system that allows users to create an account, log in, and log out. Specifically, it includes the following functionality:
 
-    - [x] login
-    - [x] Sign up
-    - [x] JWT token encode/decode
-    - [x] Middleware
+- [x] login
+- [x] Sign up
+- [x] JWT token encode/decode
+- [x] Middleware
 
 ### Email (Coming soon)
 
