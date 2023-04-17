@@ -3,10 +3,22 @@
 ## Features
 
 - [x] CRUD 
+    - [x] Update user
+    - [x] Create User
+    - [x] Delete user
+    - [x] List users
+
 - [x] Authentication
     - [x] login
     - [x] Sign up
     - [x] JWT token encode/decode
+    - [x] Middleware
+
+- [ ] Email
+    - [ ] Send emails with templates
+
+- [ ] Robust Error handling
+
 
 
 ## Setup
