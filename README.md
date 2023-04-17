@@ -6,7 +6,7 @@ With this starter application, you can focus on building the core features of yo
 
 ## Features
 
-- [x] CRUD 
+### CRUD 
 
 The application provides basic CRUD (Create, Read, Update, and Delete) operations for managing user data. Specifically, it includes the following functionality:
 
