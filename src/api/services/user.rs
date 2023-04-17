@@ -21,6 +21,21 @@ pub enum JwtGuardError {
     InvalidToken,
 }
 
+#[derive(Debug, Serialize)]
+pub struct LoginResponseData {
+    username: String,
+    token: String
+}
+pub struct LoginData <'a> {
+    pub username: &'a str,
+    pub password: &'a str,
+}
+
+pub enum Error {
+    NotFound,
+    // other variants
+}
+
 fn generate_token(user_id: String, jwt_secret: &str) -> Result<String, JwtGuardError> {
 
     let now = chrono::Utc::now().timestamp();
@@ -38,17 +53,6 @@ fn generate_token(user_id: String, jwt_secret: &str) -> Result<String, JwtGuardE
 }
 
 
-pub struct LoginData <'a> {
-    pub username: &'a str,
-    pub password: &'a str,
-}
-
-#[derive(Debug, Serialize)]
-pub struct LoginResponseData {
-    username: String,
-    token: String
-}
-
 pub async fn add(
     collection: &Collection<user::UserData>,
     document: user::UserData,
@@ -56,13 +60,6 @@ pub async fn add(
     let result = collection.insert_one(document, None).await?;
     Ok(result)
 }
-
-
-pub enum Error {
-    NotFound,
-    // other variants
-}
-
 
 pub async fn login(
     collection: &Collection<user::UserData>,

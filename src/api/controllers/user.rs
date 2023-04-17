@@ -1,15 +1,17 @@
-use crate::api::database_connection::create_client;
-use crate::api::model::user::{self, UserData};
-use crate::api::services::user::{add, delete, find_all, login, update, LoginResponseData};
-use crate::api::{middleware, services};
 use bson::doc;
 use mongodb::results::InsertOneResult;
-use mongodb::Collection;
+use mongodb::{Collection, Database};
 use rocket::http::Status;
 use rocket::response::Debug;
 use rocket::serde::json::Json;
-use rocket::{delete, get, patch, post};
+use rocket::{delete, get, patch, post, State};
 use serde::{Deserialize, Serialize};
+
+use crate::api::{middleware, services};
+use crate::api::database_connection::create_client;
+use crate::api::model::user::{self, UserData};
+use crate::api::services::user::{add, delete, find_all, login, update, LoginResponseData};
+
 
 pub async fn db_client(collection: &str) -> Collection<user::UserData> {
     let client: Collection<user::UserData> = create_client(collection).await;
@@ -31,15 +33,23 @@ pub struct LoginData {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct Info {
+    modified_count: u64,
+}
+
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct UserRequestBodyUpdate {
     pub name: String,
 }
 type Result<T, E = Debug<rocket::Error>> = std::result::Result<T, E>;
 
 #[post("/create", format = "json", data = "<body>")]
-
-pub async fn create_user(body: Json<UserRequestBody>) -> Result<Json<InsertOneResult>, Status> {
-    let collection = db_client("my_collection").await;
+pub async fn create_user(
+    body: Json<UserRequestBody>,
+    db: &State<Database>,
+) -> Result<Json<InsertOneResult>, Status> {
+    let collection = db.collection("my_collection");
 
     // Insert a document
     let document = user::UserData {
@@ -55,6 +65,7 @@ pub async fn create_user(body: Json<UserRequestBody>) -> Result<Json<InsertOneRe
         Err(_) => Err(Status::NotAcceptable),
     }
 }
+
 
 #[post("/login", format = "json", data = "<body>")]
 pub async fn loguser_in(body: Json<LoginData>) -> Result<Json<LoginResponseData>, Status> {
@@ -73,28 +84,14 @@ pub async fn loguser_in(body: Json<LoginData>) -> Result<Json<LoginResponseData>
 }
 
 #[delete("/<id>")]
-pub async fn delete_user(id: &str, auth_guard: middleware::auth::JwtGuard) -> Status {
-    let collection = db_client("my_collection").await;
+pub async fn delete_user(id: &str, _auth_guard: middleware::auth::JwtGuard) -> Status {
+    const COLLECTION_NAME: &str = "my_collection";
+    let collection = db_client(COLLECTION_NAME).await;
 
-    // Access the user's id in case you need it
-    let user_id = &auth_guard.user_id;
-    println!("{}", user_id);
-
-    #[derive(Debug, Serialize, Deserialize)]
-    struct Info {
-        deleted_count: u64,
-    }
-
-    // Delete and check if the delete operation was successful
     match delete(&collection, &id).await {
-        Ok(result) => {
-            if result.deleted_count == 0 {
-                Status::NotFound
-            } else {
-                Status::Found
-            }
-        }
-        Err(_e) => Status::NotAcceptable,
+        Ok(result) if result.deleted_count > 0 => Status::Found,
+        Ok(_) => Status::NotFound,
+        Err(_) => Status::NotAcceptable,
     }
 }
 
@@ -103,20 +100,18 @@ pub async fn update_user(
     id: &str,
     body: Json<UserRequestBodyUpdate>,
     _auth_guard: middleware::auth::JwtGuard,
-) -> Status {
+) -> Result<Json<Info>, Status> {
     let collection = db_client("my_collection").await;
 
-    #[derive(Debug, Serialize, Deserialize)]
-    struct Info {
-        modified_count: u64,
-    }
+    let modified_count = update(&collection, &id, &body.name).await.map_err(|_e| Status::NotAcceptable)?.modified_count;
 
-    // Delete and check if the delete operation was successful
-    match update(&collection, &id, &body.name).await {
-        Ok(_result) => Status::Accepted,
-        Err(_e) => Status::NotAcceptable,
+    if modified_count == 0 {
+        Err(Status::NotFound)
+    } else {
+        Ok(Json(Info { modified_count }))
     }
 }
+
 
 #[get("/list", format = "json")]
 pub async fn get_users(
