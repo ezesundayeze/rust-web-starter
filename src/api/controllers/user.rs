@@ -94,7 +94,7 @@ pub async fn delete_user(id: &str, auth_guard: middleware::auth::JwtGuard) -> St
                 Status::Found
             }
         }
-        Err(e) => Status::NotAcceptable,
+        Err(_e) => Status::NotAcceptable,
     }
 }
 
