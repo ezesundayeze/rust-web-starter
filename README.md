@@ -1,4 +1,4 @@
-# Rust Web Application with Rocket and MongoDB Boiler Plate
+# Rust Web Starter Application with Rocket and MongoDB
 
 ## Features
 
