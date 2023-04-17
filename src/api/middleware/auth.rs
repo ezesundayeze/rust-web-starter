@@ -1,111 +1,61 @@
-use actix_web::{
-    dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform},
-    error::ErrorUnauthorized,
-    http, Error, HttpMessage,
-};
-use dotenv::dotenv;
-use futures_util::future::LocalBoxFuture;
+use rocket::http::Status;
+use rocket::request::{self, FromRequest, Outcome};
+use rocket::{Request};
 use jsonwebtoken::{decode, DecodingKey, Validation};
-use serde::{Deserialize, Serialize};
-use std::env;
-use std::{
-    fmt,
-    future::{ready, Ready},
-};
+use serde::{Deserialize};
+use serde_json::Value;
+use std::collections::HashMap;
 
-#[derive(Deserialize, Serialize)]
-pub struct Claims {
-    sub: String,
-    exp: String,
-    iat: String,
+use crate::api::config::Config; // your application's configuration module
+
+#[derive(Debug, Deserialize)]
+pub struct JwtGuard {
+    pub user_id: String,
 }
 
-#[derive(Debug, Serialize)]
-struct ErrorResponse {
-    status: String,
-    message: String,
+#[derive(Debug, PartialEq)]
+pub enum JwtGuardError {
+    MissingToken,
+    InvalidToken,
 }
 
-impl fmt::Display for ErrorResponse {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", serde_json::to_string(&self).unwrap())
-    }
-}
-// Middleware factory is `Transform` trait
-// `S` - type of the next service
-// `B` - type of response's body
-impl<S, B> Transform<S, ServiceRequest> for Claims
-where
-    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
-    S::Future: 'static,
-    B: 'static,
-{
-    type Response = ServiceResponse<B>;
-    type Error = Error;
-    type InitError = ();
-    type Transform = JwtMiddleware<S>;
-    type Future = Ready<Result<Self::Transform, Self::InitError>>;
+#[rocket::async_trait]
+impl<'r> FromRequest<'r> for JwtGuard {
+    type Error = JwtGuardError;
 
-    fn new_transform(&self, service: S) -> Self::Future {
-        ready(Ok(JwtMiddleware { service }))
-    }
-}
+    async fn from_request(request: &'r Request<'_>) -> request::Outcome<Self, Self::Error> {
 
-pub struct JwtMiddleware<S> {
-    service: S,
-}
+        let config = Config::new();
 
-impl<S, B> Service<ServiceRequest> for JwtMiddleware<S>
-where
-    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
-    S::Future: 'static,
-    B: 'static,
-{
-    type Response = ServiceResponse<B>;
-    type Error = Error;
-    type Future = LocalBoxFuture<'static, Result<Self::Response, Self::Error>>;
+        let auth_header = request.headers().get_one("Authorization");
+        if let Some(auth_header) = auth_header {
+            if auth_header.starts_with("Bearer ") {
+                let token = auth_header.trim_start_matches("Bearer ");
+                let validation = Validation::new(jsonwebtoken::Algorithm::HS256);
 
-    forward_ready!(service);
+                // Try to decode the JWT payload into a HashMap
+                let decoded_token: Result<HashMap<String, Value>, _> = decode::<HashMap<String, Value>>(
+                    token,
+                    &DecodingKey::from_secret(config.jwt_secret.as_ref()),
+                    &validation,
+                ).map(|token_data| token_data.claims);
 
-    fn call(&self, req: ServiceRequest) -> Self::Future {
-        // retrieve the token from the header
-        let token = match req.cookie("token") {
-            Some(cookie) => Some(cookie.value().to_string()),
-            None => req
-                .headers()
-                .get(http::header::AUTHORIZATION)
-                .and_then(|h| h.to_str().ok())
-                .and_then(|h| {
-                    if h.starts_with("Bearer ") {
-                        Some(h[7..].to_string())
-                    } else {
-                        None
-                    }
-                }),
-        };
-        let secret = env::var("JWT_SECRET").expect("JWT secret is required");
-        // Decode the JWT and retrieve the user details
-        let decoded_token = &DecodingKey::from_secret(secret.as_bytes());
+                // Check if decoding was successful
+                if let Ok(token_data) = decoded_token {
+                    // Extract the user ID from the token's claims
+                    let user_id = match token_data.get("sub") {
+                        Some(user_id) => user_id.to_string(),
+                        None => return Outcome::Failure((Status::Unauthorized, JwtGuardError::InvalidToken)),
+                    };
 
-        let claims = match decode::<Claims>(&token.unwrap(), decoded_token, &Validation::default())
-        {
-            Ok(c) => c.claims,
-            Err(_) => {
-                let json_error = ErrorResponse {
-                    status: "fail".to_string(),
-                    message: "Invalid token".to_string(),
-                };
-                return Box::pin(ready(Err(ErrorUnauthorized(json_error))));
+                    // Continue to the next middleware or request handler, with the user ID as the data
+                    return Outcome::Success(JwtGuard { user_id });
+                } else {
+                    return Outcome::Failure((Status::Unauthorized, JwtGuardError::InvalidToken));
+                }
             }
-        };
-        // Add the user object to the request's extensions
-        req.extensions_mut().insert(claims);
+        }
 
-        let fut = self.service.call(req);
-
-        Box::pin(async move {
-            let res = fut.await?;
-            Ok(res)
-        })
+        Outcome::Failure((Status::Unauthorized, JwtGuardError::MissingToken))
     }
 }

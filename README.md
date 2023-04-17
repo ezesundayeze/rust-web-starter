@@ -1,9 +1,9 @@
-# Web Application with Actix and MongoDB Boiler Plate
+# Rust Web Application with Rocket and MongoDB Boiler Plate
 
 ## Features
 
 - [x] CRUD 
-- [ ] Authentication
-    - [ ] login
-    - [ ] Sign up
-    - [ ] JWT token encode/decode
+- [x] Authentication
+    - [x] login
+    - [x] Sign up
+    - [x] JWT token encode/decode

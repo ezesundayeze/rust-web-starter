@@ -1,12 +1,14 @@
 use mongodb::{options::ClientOptions, Client, Collection};
 use dotenv::dotenv;
-use std::env;
+use crate::api::config::Config;
 
 pub async fn create_client<T>(collection: &str) -> Collection<T> {
     dotenv().ok();
 
-    let uri = env::var("MONGODB_URI").expect("MONGODB_URI not found in environment");
-    let db_name = env::var("DB_NAME").expect("DB_NAME not found in environment");
+    let config = Config::new();
+
+    let uri = config.database_url;
+    let db_name = config.database_name;
 
     let client_options = ClientOptions::parse(uri).await.unwrap();
     let client = Client::with_options(client_options).unwrap();

@@ -1,18 +1,29 @@
-use actix_web::{App, HttpServer};
+extern crate rocket;
+use rocket::{catch, catchers, launch, routes };
 mod api;
+use api::controllers::user::{create_user, delete_user, get_users, loguser_in, update_user};
 
-#[actix_web::main]
-async fn main() -> std::io::Result<()> {
+#[catch(default)]
+fn default_catcher() -> &'static str {
+    "An error occurred"
+}
 
-    
-    HttpServer::new(|| {
-        App::new()
-            .service(api::controllers::user::create_user)
-            .service(api::controllers::user::delete_user)
-            .service(api::controllers::user::update_user)
-            .service(api::controllers::user::get_users)
-    })
-    .bind(("127.0.0.1", 8080))?
-    .run()
-    .await
+#[catch(404)]
+fn notfound_catcher() ->  &'static str {
+    "Not found"
+}
+
+#[catch(401)]
+fn unauthorized_catcher() -> &'static str {
+    "Unauthorized"
+}
+
+#[launch]
+fn rocket() -> _ {
+    rocket::build()
+        .register("/", catchers![default_catcher, unauthorized_catcher, notfound_catcher])
+        .mount(
+            "/user",
+            routes![get_users, create_user, update_user, delete_user, loguser_in],
+        )
 }

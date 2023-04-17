@@ -1,21 +1,44 @@
-use actix_web::{delete, get, patch, post, web, HttpResponse, Responder};
-use bson::doc;
-use mongodb::{
-    Collection,
-};
-use serde::{Deserialize, Serialize};
-use crate::api::services::user;
-
 use crate::api::database_connection::create_client;
-
+use crate::api::model::user::{self, UserData};
+use crate::api::services::user::{add, delete, find_all, login, update, LoginResponseData};
+use crate::api::{middleware, services};
+use bson::doc;
+use mongodb::results::InsertOneResult;
+use mongodb::Collection;
+use rocket::http::Status;
+use rocket::response::Debug;
+use rocket::serde::json::Json;
+use rocket::{delete, get, patch, post};
+use serde::{Deserialize, Serialize};
 
 pub async fn db_client(collection: &str) -> Collection<user::UserData> {
     let client: Collection<user::UserData> = create_client(collection).await;
     client
 }
 
-#[post("/user/create")]
-pub async fn create_user(body: web::Json<user::UserRequestBody>) -> impl Responder {
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UserRequestBody {
+    pub name: String,
+    pub email: String,
+    pub password: String,
+    pub username: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct LoginData {
+    pub username: String,
+    pub password: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UserRequestBodyUpdate {
+    pub name: String,
+}
+type Result<T, E = Debug<rocket::Error>> = std::result::Result<T, E>;
+
+#[post("/create", format = "json", data = "<body>")]
+
+pub async fn create_user(body: Json<UserRequestBody>) -> Result<Json<InsertOneResult>, Status> {
     let collection = db_client("my_collection").await;
 
     // Insert a document
@@ -23,17 +46,39 @@ pub async fn create_user(body: web::Json<user::UserRequestBody>) -> impl Respond
         id: bson::oid::ObjectId::new(),
         name: Some(body.name.to_string()),
         email: Some(body.email.to_string()),
+        username: Some(body.username.to_string()),
+        password: Some(body.password.to_string()),
     };
 
-    match user::add(&collection, document).await {
-        Ok(result) => HttpResponse::Ok().json(result.inserted_id),
-        Err(e) => HttpResponse::InternalServerError().body(format!("Failed to insert user: {}", e)),
+    match add(&collection, document).await {
+        Ok(result) => Ok(Json(result)),
+        Err(_) => Err(Status::NotAcceptable),
     }
 }
 
-#[delete("/user/{id}")]
-pub async fn delete_user(id: web::Path<String>) -> impl Responder {
+#[post("/login", format = "json", data = "<body>")]
+pub async fn loguser_in(body: Json<LoginData>) -> Result<Json<LoginResponseData>, Status> {
     let collection = db_client("my_collection").await;
+
+    let data = services::user::LoginData {
+        username: body.username.as_str(),
+        password: body.password.as_str(),
+    };
+
+    let authenticate = login(&collection, data).await;
+    match authenticate {
+        Ok(result) => Ok(Json(result)),
+        Err(_) => Err(Status::Forbidden),
+    }
+}
+
+#[delete("/<id>")]
+pub async fn delete_user(id: &str, auth_guard: middleware::auth::JwtGuard) -> Status {
+    let collection = db_client("my_collection").await;
+
+    // Access the user's id in case you need it
+    let user_id = &auth_guard.user_id;
+    println!("{}", user_id);
 
     #[derive(Debug, Serialize, Deserialize)]
     struct Info {
@@ -41,19 +86,24 @@ pub async fn delete_user(id: web::Path<String>) -> impl Responder {
     }
 
     // Delete and check if the delete operation was successful
-    match user::delete(&collection, &id).await {
-        Ok(result) => HttpResponse::Ok().json(web::Json(Info {
-            deleted_count: result.deleted_count,
-        })),
-        Err(e) => HttpResponse::InternalServerError().body(format!("Failed to delete: {}", e)),
+    match delete(&collection, &id).await {
+        Ok(result) => {
+            if result.deleted_count == 0 {
+                Status::NotFound
+            } else {
+                Status::Found
+            }
+        }
+        Err(e) => Status::NotAcceptable,
     }
 }
 
-#[patch("/user/{id}")]
+#[patch("/<id>", format = "json", data = "<body>")]
 pub async fn update_user(
-    id: web::Path<String>,
-    body: web::Json<user::UserRequestBodyUpdate>,
-) -> impl Responder {
+    id: &str,
+    body: Json<UserRequestBodyUpdate>,
+    _auth_guard: middleware::auth::JwtGuard,
+) -> Status {
     let collection = db_client("my_collection").await;
 
     #[derive(Debug, Serialize, Deserialize)]
@@ -62,20 +112,20 @@ pub async fn update_user(
     }
 
     // Delete and check if the delete operation was successful
-    match user::update(&collection, &id, &body.name).await {
-        Ok(result) => HttpResponse::Ok().json(web::Json(Info {
-            modified_count: result.modified_count,
-        })),
-        Err(e) => HttpResponse::InternalServerError().body(format!("Failed to update: {}", e)),
+    match update(&collection, &id, &body.name).await {
+        Ok(_result) => Status::Accepted,
+        Err(_e) => Status::NotAcceptable,
     }
 }
 
-#[get("/user/list")]
-pub async fn get_users() -> impl Responder {
+#[get("/list", format = "json")]
+pub async fn get_users(
+    _auth_guard: middleware::auth::JwtGuard,
+) -> Result<Json<Vec<UserData>>, Status> {
     let collection = db_client("my_collection").await;
 
-    match user::find_all(&collection).await {
-        Ok(result) => HttpResponse::Ok().json(result),
-        Err(e) => HttpResponse::InternalServerError().body(format!("Failed to find: {}", e)),
+    match find_all(&collection).await {
+        Ok(result) => Ok(Json(result)),
+        Err(_) => Err(Status::NotAcceptable),
     }
 }

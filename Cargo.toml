@@ -6,7 +6,6 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-actix-web = "4"
 bson = "2.6.0"
 derivative = "2.2.0"
 mongodb = "2.4.0"
@@ -19,5 +18,9 @@ cargo-watch = "8.4.0"
 chrono = "0.4.24"
 jsonwebtoken = "8.3.0"
 futures-util = "0.3.27"
-actix-service = "2.0.2"
+rocket = { version = "0.5.0-rc.2", features=["json"]}
+
+
+# [dependencies.rocket_dyn_templates]
+# features = ["handlebars"]
 
